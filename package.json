@@ -7,13 +7,18 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "backend": "cd backend && python start_backend.py",
+    "backend:install": "cd backend && python install_dependencies.py",
+    "dev:full": "python start_development.py",
+    "start": "python start_development.py"
   },
   "dependencies": {
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.6.3"
+    "react-router-dom": "^7.6.3",
+    "socket.io-client": "^4.7.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
