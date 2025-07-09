@@ -1,0 +1,84 @@
+/* High contrast mode */
+.high-contrast {
+  filter: contrast(200%) brightness(100%);
+}
+
+/* Focus indicators */
+*:focus {
+  outline: 2px solid #3B82F6;
+  outline-offset: 2px;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Large touch targets */
+button, .touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* High contrast text */
+.high-contrast-text {
+  color: #000000;
+  text-shadow: 0 0 1px #ffffff;
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Emergency mode styles */
+.emergency-mode {
+  border: 3px solid #DC2626;
+  animation: emergency-pulse 1s infinite;
+}
+
+@keyframes emergency-pulse {
+  0% { border-color: #DC2626; }
+  50% { border-color: #EF4444; }
+  100% { border-color: #DC2626; }
+}
+
+/* Accessibility improvements */
+.accessible-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.accessible-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.accessible-button:hover::before {
+  left: 100%;
+}
+
+/* Color-blind friendly colors */
+.colorblind-safe-red { background-color: #D73027; }
+.colorblind-safe-green { background-color: #1A9850; }
+.colorblind-safe-blue { background-color: #313695; }
+.colorblind-safe-orange { background-color: #F46D43; }
+.colorblind-safe-purple { background-color: #762A83; }
