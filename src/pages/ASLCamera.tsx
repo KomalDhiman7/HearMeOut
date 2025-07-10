@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, CameraOff, Volume2, Settings, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { apiService } from '../services/api';
 
 const ASLCamera: React.FC = () => {
   const { speakText, isEmergencyMode } = useApp();
@@ -15,24 +16,17 @@ const ASLCamera: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
 
-  // Mock ASL detection results for demo
-  const mockDetections = [
-    { text: 'Hello', confidence: 95 },
-    { text: 'Thank you', confidence: 90 },
-    { text: 'Help me', confidence: 85 },
-    { text: 'Water please', confidence: 92 },
-    { text: 'I need assistance', confidence: 88 },
-    { text: 'Emergency', confidence: 96 },
-    { text: 'Goodbye', confidence: 87 },
-    { text: 'Yes', confidence: 94 },
-    { text: 'No', confidence: 91 },
-    { text: 'Thank you very much', confidence: 83 },
-    { text: 'Where is the bathroom?', confidence: 89 },
-    { text: 'I am deaf', confidence: 93 },
-    { text: 'Please help', confidence: 87 },
-    { text: 'Call someone', confidence: 84 },
-  ];
+  useEffect(() => {
+    // Check backend connection
+    const checkBackend = async () => {
+      const response = await apiService.healthCheck();
+      setBackendStatus(response.error ? 'disconnected' : 'connected');
+    };
+    
+    checkBackend();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -62,7 +56,11 @@ const ASLCamera: React.FC = () => {
         videoRef.current.onloadedmetadata = () => {
           setCameraStatus('granted');
           setIsRecording(true);
-          startMockDetection();
+          if (backendStatus === 'connected') {
+            startRealTimeDetection();
+          } else {
+            console.warn('Backend not connected, gesture recognition disabled');
+          }
         };
         
         // Handle video errors
@@ -110,42 +108,71 @@ const ASLCamera: React.FC = () => {
     setCameraStatus('idle');
   };
 
-  const startMockDetection = () => {
+  const startRealTimeDetection = () => {
     // Clear any existing interval
     if (detectionIntervalRef.current) {
       clearInterval(detectionIntervalRef.current);
     }
     
-    // Simulate ASL detection every 3-5 seconds
+    // Real-time gesture detection every 2 seconds
     detectionIntervalRef.current = setInterval(() => {
-      if (!isRecording) {
+      if (!isRecording || !videoRef.current || !canvasRef.current) {
         return;
       }
 
       setIsProcessing(true);
       
-      setTimeout(() => {
-        const randomDetection = mockDetections[Math.floor(Math.random() * mockDetections.length)];
-        setDetectedText(randomDetection.text);
-        setConfidence(randomDetection.confidence);
+      // Capture frame from video
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      const context = canvas.getContext('2d');
+      
+      if (context) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0);
+        
+        // Convert to base64
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // Send to backend for gesture recognition
+        processGesture(imageData);
+      }
+    }, 2000);
+  };
+
+  const processGesture = async (imageData: string) => {
+    try {
+      const response = await apiService.recognizeGesture(imageData);
+      
+      if (response.data && response.data.gestures && response.data.gestures.length > 0) {
+        const bestGesture = response.data.gestures[0]; // Get highest confidence gesture
+        
+        setDetectedText(bestGesture.text);
+        setConfidence(Math.round(bestGesture.confidence * 100));
         setIsProcessing(false);
         
         // Add to history
         setDetectionHistory(prev => [
           { 
-            text: randomDetection.text, 
-            confidence: randomDetection.confidence, 
+            text: bestGesture.text, 
+            confidence: Math.round(bestGesture.confidence * 100), 
             timestamp: Date.now() 
           },
           ...prev.slice(0, 4) // Keep last 5 detections
         ]);
         
         // Auto-speak detected text
-        speakText(randomDetection.text, { 
-          urgent: randomDetection.text.includes('Help') || randomDetection.text.includes('Emergency') 
+        speakText(bestGesture.text, { 
+          urgent: bestGesture.text.includes('Help') || bestGesture.text.includes('Emergency') 
         });
-      }, 1500);
-    }, 4000);
+      } else {
+        setIsProcessing(false);
+      }
+    } catch (error) {
+      console.error('Gesture recognition error:', error);
+      setIsProcessing(false);
+    }
   };
 
   const handleSpeak = () => {
@@ -179,6 +206,18 @@ const ASLCamera: React.FC = () => {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-gray-900">Camera Feed</h2>
                 <div className="flex items-center space-x-2">
+                  {backendStatus === 'disconnected' && (
+                    <div className="flex items-center space-x-1 text-red-600">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span className="text-sm">Backend offline</span>
+                    </div>
+                  )}
+                  {backendStatus === 'connected' && (
+                    <div className="flex items-center space-x-1 text-green-600">
+                      <CheckCircle className="w-4 h-4" />
+                      <span className="text-sm">Backend connected</span>
+                    </div>
+                  )}
                   {cameraStatus === 'requesting' && (
                     <div className="flex items-center space-x-1 text-blue-600">
                       <RefreshCw className="w-4 h-4 animate-spin" />
@@ -375,11 +414,11 @@ const ASLCamera: React.FC = () => {
         {/* Camera Status Info */}
         <div className="mt-8 p-6 bg-white rounded-xl shadow-lg">
           <h3 className="text-lg font-semibold text-gray-900 mb-3">
-            Camera Status & Troubleshooting
+            System Status & Troubleshooting
           </h3>
           <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <h4 className="font-medium text-gray-800 mb-2">Current Status</h4>
+              <h4 className="font-medium text-gray-800 mb-2">Camera Status</h4>
               <div className="flex items-center space-x-2 mb-2">
                 {cameraStatus === 'granted' ? (
                   <CheckCircle className="w-5 h-5 text-green-600" />
@@ -399,7 +438,8 @@ const ASLCamera: React.FC = () => {
               <ul className="space-y-1 text-gray-600 text-sm">
                 <li>• Camera permission: {cameraStatus === 'granted' ? 'Granted' : 'Required'}</li>
                 <li>• Video feed: {isRecording ? 'Active' : 'Inactive'}</li>
-                <li>• Detection: {isRecording ? 'Running' : 'Stopped'}</li>
+                <li>• Detection: {isRecording && backendStatus === 'connected' ? 'Running' : 'Stopped'}</li>
+                <li>• Backend: {backendStatus === 'connected' ? 'Connected' : 'Disconnected'}</li>
               </ul>
             </div>
             <div>
@@ -410,6 +450,7 @@ const ASLCamera: React.FC = () => {
                 <li>• Close other apps using the camera</li>
                 <li>• Refresh the page if camera fails</li>
                 <li>• Check browser camera settings</li>
+                <li>• Ensure Flask backend is running on port 5000</li>
               </ul>
             </div>
           </div>
@@ -437,8 +478,9 @@ const ASLCamera: React.FC = () => {
                 <li>• Ensure good, even lighting</li>
                 <li>• Use a plain, contrasting background</li>
                 <li>• Keep hands within the camera frame</li>
-                <li>• Sign clearly and hold briefly</li>
-                <li>• Speak detected text for verification</li>
+                <li>• Make clear, distinct gestures</li>
+                <li>• Hold gestures for 2-3 seconds</li>
+                <li>• Try: thumbs up, thumbs down, peace sign, OK sign</li>
               </ul>
             </div>
           </div>

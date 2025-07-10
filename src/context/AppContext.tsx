@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, AppSettings, EmergencyContact } from '../types';
 import { loadUserData, saveUserData, clearUserData } from '../utils/storage';
+import { apiService } from '../services/api';
 
 interface AppContextType {
   user: User | null;
@@ -141,57 +142,18 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   };
 
   const login = async (email: string, password: string): Promise<void> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const response = await apiService.login(email, password);
     
-    const mockUser = mockUsers.find(u => u.email === email && u.password === password);
-    
-    if (!mockUser) {
-      throw new Error('Invalid email or password');
+    if (response.error) {
+      throw new Error(response.error);
     }
 
+    const { user: userData } = response.data;
+    
     const user: User = {
-      id: mockUser.id,
-      name: mockUser.name,
-      email: mockUser.email,
-      preferences: mockUser.preferences,
-      savedPhrases: mockUser.savedPhrases,
-      gestureShortcuts: mockUser.gestureShortcuts,
-      createdAt: mockUser.createdAt,
-    };
-
-    setUser(user);
-    
-    // Merge user preferences with default settings
-    const userSettings: AppSettings = {
-      ...defaultSettings,
-      language: user.preferences.language,
-      voiceSpeed: user.preferences.voiceSpeed,
-      voiceVolume: user.preferences.voiceVolume,
-      emergencyContacts: user.preferences.emergencyContacts,
-      savedPhrases: user.savedPhrases,
-      accessibilityMode: user.preferences.accessibilityMode,
-    };
-    
-    setSettings(userSettings);
-    await saveUserData({ user, settings: userSettings });
-  };
-
-  const signup = async (email: string, password: string, name: string): Promise<void> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Check if user already exists
-    const existingUser = mockUsers.find(u => u.email === email);
-    if (existingUser) {
-      throw new Error('User with this email already exists');
-    }
-
-    // Create new user
-    const newUser: User = {
-      id: Date.now().toString(),
-      name,
-      email,
+      id: userData.id.toString(),
+      name: userData.name,
+      email: userData.email,
       preferences: {
         language: defaultSettings.language,
         voiceSpeed: defaultSettings.voiceSpeed,
@@ -204,11 +166,51 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       createdAt: new Date().toISOString(),
     };
 
-    // Add to mock database
-    mockUsers.push({
-      ...newUser,
-      password,
-    });
+    setUser(user);
+    
+    // Load user history and preferences
+    const historyResponse = await apiService.getUserHistory();
+    if (historyResponse.data) {
+      const userSettings: AppSettings = {
+        ...defaultSettings,
+        savedPhrases: historyResponse.data.saved_phrases?.map((p: any) => ({
+          id: p.id?.toString() || Date.now().toString(),
+          text: p.phrase,
+          category: p.category as any,
+          frequency: p.frequency || 0,
+          createdAt: new Date().toISOString(),
+        })) || [],
+      };
+      setSettings(userSettings);
+    }
+    
+    await saveUserData({ user, settings });
+  };
+
+  const signup = async (email: string, password: string, name: string): Promise<void> => {
+    const response = await apiService.signup(email, password, name);
+    
+    if (response.error) {
+      throw new Error(response.error);
+    }
+
+    const { user: userData } = response.data;
+    
+    const newUser: User = {
+      id: userData.id.toString(),
+      name: userData.name,
+      email: userData.email,
+      preferences: {
+        language: defaultSettings.language,
+        voiceSpeed: defaultSettings.voiceSpeed,
+        voiceVolume: defaultSettings.voiceVolume,
+        emergencyContacts: [],
+        accessibilityMode: true,
+      },
+      savedPhrases: [],
+      gestureShortcuts: [],
+      createdAt: new Date().toISOString(),
+    };
 
     setUser(newUser);
     setSettings(defaultSettings);
@@ -216,6 +218,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
+    apiService.logout();
     setUser(null);
     setSettings(defaultSettings);
     clearUserData();
