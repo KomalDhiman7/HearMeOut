@@ -68,29 +68,10 @@ const Index = () => {
               </Button>
             </div>
 
-            {/* Features Preview */}
-            <div className="bg-white rounded-xl p-6 shadow-lg">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">Features</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                <div className="p-3">
-                  <Zap className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Instant</p>
-                </div>
-                <div className="p-3">
-                  <Phone className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Emergency</p>
-                </div>
-                <div className="p-3">
-                  <Camera className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">ASL Ready</p>
-                </div>
-                <div className="p-3">
-                  <Heart className="h-6 w-6 text-red-600 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Accessible</p>
-                </div>
+          
               </div>
-            </div>
-          </div>
+          
+       
         )}
 
         {activeMode === 'text' && (
