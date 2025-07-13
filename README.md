@@ -1,6 +1,6 @@
 # HearMeOut
 
-**HearMeOut** is a communication tool built for people who need alternate ways to express themselves — whether through text or visual gestures. It converts text input to speech, and also translates camera gestures into spoken words in real-time.
+**HearMeOut** is a communication tool built for people who need alternate ways to express themselves - whether through text or visual gestures. It converts text input to speech, and also translates camera gestures into spoken words in real-time.
 
 Designed with accessibility in mind, this app is perfect for non-verbal individuals, people with speech disabilities, or anyone who needs fast, context-aware communication on the go.
 
