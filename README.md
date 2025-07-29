@@ -35,3 +35,5 @@ git clone https://github.com/KomalDhiman7/hearmeout
 cd hearmeout
 npm install
 npm run dev
+
+<h1>Link: https://hearmeoutnow.vercel.app/ </h1>
